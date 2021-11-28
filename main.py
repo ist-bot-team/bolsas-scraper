@@ -1,25 +1,25 @@
 #!python3
 import requests
-import re
+#import re
+from hashlib import sha1
 import json
 import os 
-url = "https://drh.tecnico.ulisboa.pt/bolseiros/recrutamento/"
+from bs4 import BeautifulSoup as bs
+import sys
+from time import sleep
 
-webhook_url = os.getenv("WEBHOOK_URL")
+URL = "https://drh.tecnico.ulisboa.pt/bolseiros/recrutamento/"
 
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-regex_1 = re.compile("<tr .+?>([\s\S]+?)<\/tr>")
-
-regex_2 = re.compile("<td .+?>([\s\S]+?)<\/td>")
-
-regex_url = re.compile('<a href="(.+?)"')
+AVATAR_URL = "https://cdn.discordapp.com/attachments/878358615117922345/913014188400582676/Purse.png"
 
 with open("link_editais.json", "r+") as f:
     link_editais = json.load(f)
 
 
-def obter_bolsas():
-    r = requests.get(url)
+def obter_bolsas_old():
+    r = requests.get(URL)
 
     results = re.findall(regex_1, r.text.split("<tbody")[1])
 
@@ -32,16 +32,67 @@ def obter_bolsas():
     return list(results)
 
 
+def obter_bolsas():
+    r = requests.get(URL)
+    r.raise_for_status()
+    bolsas = []
+    header_skipped = False
+    #This would be a lot shorter with lambdas
+    for row in bs(r.text, "lxml")("tr"):
+        #bolsa = [id_bolsa, link_bolsa, n_vagas, tipo, prof_responsavel, area, data_abertura, data_fim]
+        bolsa = []
+        #We don't care about table headers (first iteration), skip
+        if not header_skipped:
+            header_skipped = True
+            continue
+
+        for cell in row("td"):
+            #Check if this cell is the one with the link
+            edital = cell.find('a')
+            if edital:
+#Think about doing this check in the future
+#                #Cada bolsa apenas tem um link/anchor
+#                if len(edital) != 1:
+#                    raise ValueError
+#                edital = edital[0]
+                id_bolsa = edital.text.split(" ")[0]
+                link_bolsa = edital.attrs["href"]
+#in the future save PDFs for archival
+#                obter_edital(link_bolsa)
+                bolsa.extend([id_bolsa, link_bolsa])
+            else:
+                bolsa.append(cell.text)
+
+                
+        bolsas.append(bolsa)
+            
+#            print(cell.find('a'))
+
+    return bolsas
+#results = [[cell.text for cell in row("td")] for row in bs(r.text)("tr")]
+#
+#    print(results[1:])
+#    print(len(results[1:]))
+#    return results[1:]
+#    sys.exit()
+
+
+#def anunciar_bolsas():
+#    global link-editais
+#    for bolsa in bolsas: 
+#        nr_vagas, tipo, prof_responsavel, link, area, data_abertura, data_fim = bolsa
+#    id_bolsa =  
+    
+
 def anunciar_bolsas():
     global link_editais
     for bolsa in obter_bolsas():
-        nr_vagas, tipo, prof_responsavel, link, area, data_abertura, data_fim = bolsa
-        id_bolsa = int(link.split("45/bl")[1].split("-")[0])
+        nr_vagas, tipo, prof_responsavel, id_bolsa, link, area, data_abertura, data_fim = bolsa
+#        id_bolsa = int(link.split("45/bl")[1].split("-")[0])
 
         #if not ("iniciação" in tipo.lower()):
         #    continue
 
-        avatar_url = "https://www.thebridge.it/media/catalog/product/cache/0/main/2000x2000/9df78eab33525d08d6e5fb8d27136e95/0/1/01308801_14_1_base.png"
         icon_url = ""
         if "David Matos" in prof_responsavel:
             icon_url = "https://cdn.discordapp.com/emojis/849321790672207915.png?v=1"
@@ -58,7 +109,7 @@ def anunciar_bolsas():
                         "title": "Nova Bolsa Publicada",
                         "url": link,
                         "author": {"name": prof_responsavel, "icon_url": icon_url},
-                        "description": f"Bolsa BL{id_bolsa}",
+                        "description": f"Bolsa {id_bolsa}",
                         "color": None,
                         "fields": [
                             {"name": "Vagas", "value": f"{nr_vagas}", "inline": True},
@@ -90,28 +141,31 @@ def anunciar_bolsas():
                         ],
                     }
                 ],
-                "avatar_url": avatar_url,
+                "avatar_url": AVATAR_URL,
             }
 
-            result = requests.post(webhook_url, json=data)
+            result = requests.post(WEBHOOK_URL, json=data)
 
             try:
                 result.raise_for_status()
+                print(
+                "Payload delivered successfully, code {}".format(result.status_code)
+                )
+                sleep(2)
 
             except requests.exceptions.HTTPError as err:
                 print(err)
-            else:
-                print(
-                    "Payload delivered successfully, code {}".format(result.status_code)
-                )
+                print("Retrying...")
+                sleep(120)
+                try:
+                    result = requests.post(WEBHOOK_URL, json=data)
+                except:
+                    sys.exit(1)
         
         link_editais.append(link)
         
 
-
-
-anunciar_bolsas()
-#print(link_editais)
-
-with open("link_editais.json", "w+") as f:
-    json.dump(link_editais, f, ensure_ascii=False, indent=4)
+if __name__ == "__main__":
+    anunciar_bolsas()
+    with open("link_editais.json", "w+") as f:
+        json.dump(link_editais, f, ensure_ascii=False, indent=4)
