@@ -18,20 +18,6 @@ with open("link_editais.json", "r+") as f:
     link_editais = json.load(f)
 
 
-def obter_bolsas_old():
-    r = requests.get(URL)
-
-    results = re.findall(regex_1, r.text.split("<tbody")[1])
-
-    results = map(lambda x: re.findall(regex_2, x), results)
-    results = map(lambda x: list(map(lambda y: y.strip(), x)), results)
-    results = map(
-        lambda x: [*x[0:3], re.search(regex_url, x[3]).group(1), *x[4:]], results
-    )
-
-    return list(results)
-
-
 def obter_bolsas():
     r = requests.get(URL)
     r.raise_for_status()
@@ -39,7 +25,6 @@ def obter_bolsas():
     header_skipped = False
     #This would be a lot shorter with lambdas
     for row in bs(r.text, "lxml")("tr"):
-        #bolsa = [id_bolsa, link_bolsa, n_vagas, tipo, prof_responsavel, area, data_abertura, data_fim]
         bolsa = []
         #We don't care about table headers (first iteration), skip
         if not header_skipped:
@@ -50,11 +35,6 @@ def obter_bolsas():
             #Check if this cell is the one with the link
             edital = cell.find('a')
             if edital:
-#Think about doing this check in the future
-#                #Cada bolsa apenas tem um link/anchor
-#                if len(edital) != 1:
-#                    raise ValueError
-#                edital = edital[0]
                 id_bolsa = edital.text.split(" ")[0]
                 link_bolsa = edital.attrs["href"]
 #in the future save PDFs for archival
@@ -66,32 +46,13 @@ def obter_bolsas():
                 
         bolsas.append(bolsa)
             
-#            print(cell.find('a'))
 
     return bolsas
-#results = [[cell.text for cell in row("td")] for row in bs(r.text)("tr")]
-#
-#    print(results[1:])
-#    print(len(results[1:]))
-#    return results[1:]
-#    sys.exit()
-
-
-#def anunciar_bolsas():
-#    global link-editais
-#    for bolsa in bolsas: 
-#        nr_vagas, tipo, prof_responsavel, link, area, data_abertura, data_fim = bolsa
-#    id_bolsa =  
-    
 
 def anunciar_bolsas():
     global link_editais
     for bolsa in obter_bolsas():
         nr_vagas, tipo, prof_responsavel, id_bolsa, link, area, data_abertura, data_fim = bolsa
-#        id_bolsa = int(link.split("45/bl")[1].split("-")[0])
-
-        #if not ("iniciação" in tipo.lower()):
-        #    continue
 
         icon_url = ""
         if "David Matos" in prof_responsavel:
@@ -157,6 +118,8 @@ def anunciar_bolsas():
                 print(err)
                 print("Retrying...")
                 sleep(120)
+                #This isn't a good way to do things
+                #But I'm tired and have other things to do now
                 try:
                     result = requests.post(WEBHOOK_URL, json=data)
                 except:
