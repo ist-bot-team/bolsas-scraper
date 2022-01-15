@@ -14,7 +14,8 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 AVATAR_URL = "https://cdn.discordapp.com/attachments/878358615117922345/913014188400582676/Purse.png"
 
-with open("link_editais.json", "r+") as f:
+
+with open("/opt/bolsas-scraper/link_editais.json", "r+") as f:
     link_editais = json.load(f)
 
 
@@ -52,7 +53,15 @@ def obter_bolsas():
 def anunciar_bolsas():
     global link_editais
     for bolsa in obter_bolsas():
-        nr_vagas, tipo, prof_responsavel, id_bolsa, link, area, data_abertura, data_fim = bolsa
+        #DRH being DRH...
+        if len(bolsa) == 10:
+            nr_vagas, tipo, prof_responsavel, id_bolsa, link_pt, _, link_en, area, data_abertura, data_fim = bolsa
+        elif len(bolsa) == 9:
+            nr_vagas, tipo, prof_responsavel, id_bolsa, link, _, area, data_abertura, data_fim = bolsa
+        else:
+            #DRH being DRH again...
+            raise ValueError(f"Expected 9 or 10 arguments to unpack, received {len(bolsa)} \n bolsa = '{bolsa}'")
+
 
         icon_url = ""
         if "David Matos" in prof_responsavel:
@@ -61,14 +70,17 @@ def anunciar_bolsas():
         elif "Vasco Manquinho" in prof_responsavel:
             icon_url = "https://cdn.discordapp.com/emojis/833648912367353897.png?v=1"
 
-        print(id_bolsa)
-        if link not in link_editais:
+        print("Found " + id_bolsa)
+        if link_pt not in link_editais:
+
+            print(f"Sending Webhook for {id_bolsa}")
+            print(f"link_pt = '{link_pt}'")
             data = {
                 "content": None,
                 "embeds": [
                     {
                         "title": "Nova Bolsa Publicada",
-                        "url": link,
+                        "url": link_pt,
                         "author": {"name": prof_responsavel, "icon_url": icon_url},
                         "description": f"Bolsa {id_bolsa}",
                         "color": None,
@@ -83,7 +95,7 @@ def anunciar_bolsas():
                                 "name": "Professor Responsável",
                                 "value": f"{prof_responsavel}",
                             },
-                            {"name": "Edital", "value": f"{link}"},
+                            {"name": "Edital", "value": f"{link_pt}"},
                             {
                                 "name": "Área/Projeto",
                                 "value": f"{area}",
@@ -125,7 +137,7 @@ def anunciar_bolsas():
                 except:
                     sys.exit(1)
         
-        link_editais.append(link)
+        link_editais.append(link_pt)
         
 
 if __name__ == "__main__":
