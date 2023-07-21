@@ -2,7 +2,7 @@
   description = "Python example flake for Zero to Nix";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    nixpkgs.url = "flake:nixpkgs";
   };
 
   outputs = { self, nixpkgs }:
