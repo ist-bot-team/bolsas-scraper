@@ -62,108 +62,27 @@ def get_site_parser():
 
 
 def map_bolsas(soup):
-    tables = soup.find_all("table")
-    if len(tables) != 1:
-        raise ValueError(
-            f"parse_bolsas: Wanted to find 1 table while scraping but found {len(tables)}"
-        )  # noqa: E501
-    table = tables[0]
-
-    bolsas = []
-    bolsas_raw = table.find_all("tr")
-    # Attempt to extract info from first row (table headers are unpredictable. Thanks DRH)
-    guinea = None
-    for bolsa_raw in bolsas_raw:
-        # Find a bolsa with 2 links - english and portuguese PDFs
-        if len(bolsa_raw.find_all("a")) == 2:
-            guinea = bolsa_raw
-            break
-    # Otherwise default to first one and pray for the best
-    if not guinea:
-        guinea = bolsas_raw[1]
-
-    guinea_items = guinea.find_all("td")
-    # Create a mapping between info and column id
-    mapping_ids = [i for i in range(0, len(guinea_items))]
     mapping = {
-        "vagas": -1,  # DONE
-        "tipo_bolsa": -1,  # DONE
-        "responsavel": -1,  # DONE
-        "area": -1,
-        "link_pt": -1,  # DONE
-        "link_en": -1,  # DONE
-        "data_abertura": -1,  # DONE
-        "data_limite": -1,
+        "vagas": 0,
+        "tipo_bolsa": 1,
+        "responsavel": 2,
+        "area": 3,
+        "link_pt": 4,
+        "link_en": 5,
+        "data_abertura": 6,
+        "data_limite": 7,
     }
-    i = 0
-    for item in guinea_items:
-        txt = item.text.lower()
-        # Find links for PDFs - may not exist in current iter!
-        link = item.find("a")
-        strs = list(item.stripped_strings)
-
-        # print("RGDEBUG")
-        # print(item)
-        # print(f"--- striped_strings = '{list(item.stripped_strings)}' ---")
-        # # print(f"--- striped_strings[0] = '{list(item.stripped_strings)[0]}' ---")
-        # print("RGDEBUGEND")
-        # Attempt to find nº de vagas, Python way(tm)
-        try:
-            int(txt)
-            mapping["vagas"] = i
-            mapping_ids.remove(i)
-        except ValueError:
-            pass  # Just keep trying
-
-        # Get column with person responsible
-        if "prof" in txt or "dr" in txt:
-            mapping["responsavel"] = i
-            mapping_ids.remove(i)
-        elif "investigação" in txt:
-            mapping["tipo_bolsa"] = i
-            mapping_ids.remove(i)
-        elif link:
-            if "en" in link.get("href"):
-                # Found link for English PDF
-                mapping["link_en"] = i
-                mapping_ids.remove(i)
-            else:
-                # Found link for Portuguese PDF
-                mapping["link_pt"] = i
-                mapping_ids.remove(i)
-        # Current item is a DRH date
-        elif len(strs) > 0 and re.fullmatch(DATE_PARSER, strs[0]):
-            # Assuming DRH has some sanity left and begin date comes before end date because I have better things to do
-            if mapping["data_abertura"] == -1:
-                mapping["data_abertura"] = i
-            else:
-                mapping["data_limite"] = i
-            mapping_ids.remove(i)
-        i += 1
-    if len(mapping_ids) > 1:
-        print("DEBUG: mapping \n ----------------")
-        print(mapping)
-        print("-----------------")
-        print("DEBUG: guinea \n ----------------")
-        print(guinea)
-        print("-----------------")
-        raise ValueError("Failed to map some values!")
-    mapping["area"] = mapping_ids[0]
-
     return mapping
 
 
 def get_bolsas(soup, mapping):
     table = soup.find("table")
     bolsas = []
-    skipped_header = False
+    skipped_headers = 0
     for row in table.find_all("tr"):
-        # Discard row if there are table headers there
-        if len(row.find_all("th")) != 0:
-            skipped_header = True
-            continue
-        if not skipped_header:
-            skipped_header = True
+        # Discard first two rows: table headings and English/Portuguese heading.
+        if skipped_headers < 2:
+            skipped_headers += 1
             continue
 
         bolsa = Bolsa()
@@ -307,8 +226,8 @@ def main():
         json.dump(link_editais, f, ensure_ascii=False, indent=4)
 
 
-# if __name__ == "__main__":
-# main()
+if __name__ == "__main__":
+    main()
 
 # Debugging
 # os.environ['PYTHONINSPECT'] = 'TRUE'
