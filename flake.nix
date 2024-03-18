@@ -3,7 +3,10 @@
 
   inputs = {
     nixpkgs.url = "flake:nixpkgs";
-    devenv.url = "github:cachix/devenv";
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs@{ flake-parts, ... }:
@@ -13,11 +16,11 @@
         # 1. Add foo to inputs
         # 2. Add foo as a parameter to the outputs function
         # 3. Add here: foo.flakeModule
-        inputs.devenv.flakeModule
 
       ];
       systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
-      perSystem = { config, self', inputs', pkgs, system, ... }:
+      # perSystem = { config, self', inputs', pkgs, system, ... }:
+      perSystem = { pkgs, ... }:
         let
           python = pkgs.python3;
         in
@@ -28,9 +31,6 @@
 
           # Equivalent to  inputs'.nixpkgs.legacyPackages.hello;
           packages.default =
-            let
-              python = pkgs.python3;
-            in
             python.pkgs.buildPythonApplication {
               name = "bolsas-scraper";
 
@@ -39,17 +39,16 @@
               src = ./.;
             };
 
-          devenv.shells.default = {
-            languages.python = {
-              enable = true;
-              package =  (pkgs.python3.withPackages (ps: with ps; with pkgs.python3Packages; [
-                  requests
-                  wget
-                  lxml
-                  beautifulsoup4
-            ]));
-            };
-            dotenv.enable = true;
+          devShells.default = pkgs.mkShell {
+            packages = with pkgs; [
+
+              (python.withPackages (ps: with ps; with python.pkgs; [
+                requests
+                wget
+                lxml
+                beautifulsoup4
+              ]))
+            ];
           };
         };
       flake = {
