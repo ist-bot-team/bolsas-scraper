@@ -140,7 +140,7 @@ def anunciar_bolsas(bolsas):
                 link_mirror_en = MIRROR_URL + filename_en
 
             data = {
-                "content": f"<@{PING_ROLE_ID}>",
+                "content": f"<@&{PING_ROLE_ID}>",
                 "embeds": [
                     {
                         "title": "Nova Bolsa Publicada",
