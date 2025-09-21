@@ -7,6 +7,7 @@ import sys
 from time import sleep, time
 import wget
 
+PING_ROLE_ID = os.getenv("PING_ROLE_ID")
 
 URL = "https://drh.tecnico.ulisboa.pt/bolseiros/recrutamento/"
 AVATAR_URL = "https://cdn.discordapp.com/attachments/878358615117922345/913014188400582676/Purse.png"
@@ -139,7 +140,7 @@ def anunciar_bolsas(bolsas):
                 link_mirror_en = MIRROR_URL + filename_en
 
             data = {
-                "content": None,
+                "content": f"<@{PING_ROLE_ID}>",
                 "embeds": [
                     {
                         "title": "Nova Bolsa Publicada",
