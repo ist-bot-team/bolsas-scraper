@@ -2,7 +2,7 @@
   description = "Description for the project";
 
   inputs = {
-    nixpkgs.url = "flake:nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
@@ -28,12 +28,12 @@
           # Per-system attributes can be defined here. The self' and inputs'
           # module parameters provide easy access to attributes of the same
           # system.
-
-          # Equivalent to  inputs'.nixpkgs.legacyPackages.hello;
           packages.default =
             python.pkgs.buildPythonApplication {
               name = "bolsas-scraper";
 
+              pyproject = true;
+              build-system = with python.pkgs; [ setuptools ];
               propagatedBuildInputs = with python.pkgs;  [ requests wget beautifulsoup4 lxml ];
 
               src = ./.;
